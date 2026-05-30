@@ -118,6 +118,12 @@ def run_training(config: TrainConfig) -> None:
         hidden_dims=config.hidden_dims,
     ).to(device)
 
+    optimizer = torch.optim.AdamW(
+        params=model.parameters(),
+        lr=config.lr,
+        weight_decay=config.weight_decay,
+    )
+
     exp_name = f"seed_{config.seed}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     if config.exp_name is not None:
         exp_name += f"_{config.exp_name}"
@@ -127,7 +133,18 @@ def run_training(config: TrainConfig) -> None:
     )
     logger = Logger(log_dir)
 
-    ### TODO: PUT YOUR MAIN TRAINING LOOP HERE ###
+    for epoch in range(config.num_epochs):
+        for index, batch in enumerate(loader):
+            state, action_chunk = batch[0], batch[1]
+            state = state.to(device)
+            action_chunk = action_chunk.to(device)
+
+            loss = model.compute_loss(state, action_chunk)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            logger.log({"train/loss": loss.item()}, step=epoch * 1000 + index)
 
     logger.dump_for_grading()
 
